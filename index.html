@@ -9,9 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+  </script>
   <style>
     :root {
       --bg-main: #f8fafc;
@@ -220,10 +223,6 @@
 
     .btn-reset {
       background: #64748b;
-    }
-
-    .btn-print {
-      background: #0ea5e9;
     }
 
     .btn-pdf {
@@ -576,7 +575,6 @@
 
       <div class="action-bar">
         <button type="button" class="btn-action btn-reset" id="resetBtn">↺ Reset</button>
-        <button type="button" class="btn-action btn-print" id="printBtn">⎙ Print</button>
         <button type="button" class="btn-action btn-pdf" id="downloadBtn">↓ PDF</button>
       </div>
     </form>
@@ -795,28 +793,65 @@
     async function downloadPDF() {
       if (!getItems().length) { showToast('Add at least one item','error'); return; }
       if (!validateForm()) return;
+      
       const sheet = $("invoiceSheet");
+      // Ensure QR block is visible for capture if it exists
+      const qrBlock = $("inv-qrBlock");
+      const wasHidden = qrBlock.classList.contains('hidden');
+      if (wasHidden) {
+        qrBlock.classList.remove('hidden');
+      }
+      
       try {
-        const canvas = await html2canvas(sheet, { scale: 2, backgroundColor: '#ffffff', logging: false });
+        // Use higher scale and specific options to avoid blank pages
+        const canvas = await html2canvas(sheet, { 
+          scale: 2, 
+          backgroundColor: '#ffffff', 
+          logging: false,
+          allowTaint: false,
+          useCORS: true,
+          windowWidth: sheet.scrollWidth,
+          windowHeight: sheet.scrollHeight
+        });
+        
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pageW = pdf.internal.pageSize.getWidth();
-        const imgH = (canvas.height * pageW) / canvas.width;
-        pdf.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
-        pdf.save(`Invoice_${F.companyName.value}_${F.invoiceNumber.value}.pdf`);
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        let heightLeft = imgHeight;
+        let position = 0;
+        
+        // Add first page
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        
+        // Add extra pages if content overflows
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        pdf.save(`Invoice_${F.companyName.value.trim() || 'company'}_${F.invoiceNumber.value.trim() || 'inv'}.pdf`);
         showToast('PDF downloaded','success');
-      } catch (e) { showToast('PDF failed','error'); }
-    }
-
-    function printInvoice() {
-      if (!getItems().length) { showToast('Add items first','error'); return; }
-      if (!validateForm()) return;
-      window.print();
+      } catch (e) {
+        console.error(e);
+        showToast('PDF generation failed','error');
+      } finally {
+        // Restore hidden state if it was hidden before
+        if (wasHidden) {
+          qrBlock.classList.add('hidden');
+        }
+      }
     }
 
     function resetForm() {
-      if (!confirm('Clear all?')) return;
+      if (!confirm('Clear all fields?')) return;
       Object.values(F).forEach(el => { if(el) el.value = ''; });
       $("itemsContainer").innerHTML = '';
       itemCounter = 0;
@@ -850,7 +885,6 @@
       init();
       $('addItemBtn').addEventListener('click', () => addItem());
       $('downloadBtn').addEventListener('click', downloadPDF);
-      $('printBtn').addEventListener('click', printInvoice);
       $('resetBtn').addEventListener('click', resetForm);
       $('toggleEditorBtn').addEventListener('click', () => {
         document.getElementById('editorPanel').classList.toggle('hidden-mobile');
