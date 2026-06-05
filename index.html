@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>InvoiceForge — Professional Invoice Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700;900&display=swap"
+    rel="stylesheet" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #f8fafc;
+      --panel-ed: #ffffff;
+      --primary: #1a1a2e;
+      --accent: #2563eb;
+      --text: #334155;
+    }
+
+    body {
+      font-family: 'Lato', sans-serif;
+      margin: 0;
+      background-color: var(--bg-main);
+      color: var(--text);
+    }
+
+    .app-shell {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .editor-panel {
+      width: 45%;
+      background: var(--panel-ed);
+      padding: 25px;
+      overflow-y: auto;
+      border-right: 1px solid #e2e8f0;
+      box-sizing: border-box;
+    }
+
+    .preview-panel {
+      width: 55%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      background: #cbd5e1;
+      box-sizing: border-box;
+    }
+
+    .preview-scroll {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      padding: 20px 0;
+    }
+
+    .invoice-sheet {
+      width: 794px;
+      min-height: 1123px;
+      background: #fff;
+      padding: 50px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .form-section {
+      background: #f1f5f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 12px;
+    }
+
+    .field-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 12px;
+    }
+
+    .field-group label {
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 5px;
+      color: var(--primary);
+    }
+
+    input,
+    textarea,
+    select {
+      padding: 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    input.error {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .field-error {
+      color: #ef4444;
+      font-size: 11px;
+      margin-top: 4px;
+      font-weight: bold;
+    }
+
+    .item-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 10px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-add-item {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-remove-item {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      margin-top: 25px;
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+    }
+
+    .btn-reset {
+      background: #64748b;
+    }
+
+    .btn-print {
+      background: #0ea5e9;
+    }
+
+    .btn-pdf {
+      background: var(--accent);
+    }
+
+    .inv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .inv-company-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      margin: 0;
+      color: var(--primary);
+    }
+
+    .inv-title-block {
+      text-align: right;
+    }
+
+    .inv-title-word {
+      font-size: 32px;
+      letter-spacing: 2px;
+      color: var(--accent);
+      margin: 0;
+      font-weight: 900;
+    }
+
+    .inv-divider {
+      border: none;
+      border-top: 2px solid #e2e8f0;
+      margin: 18px 0 20px 0;
+    }
+
+    .inv-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .inv-details-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    .inv-detail-row {
+      display: flex;
+      gap: 15px;
+      font-size: 13px;
+    }
+
+    .inv-detail-key {
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .inv-detail-val {
+      font-weight: 700;
+      color: var(--primary);
+      text-align: right;
+    }
+
+    .inv-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+
+    .inv-table th {
+      background: var(--accent);
+      color: white;
+      padding: 12px;
+      text-align: left;
+    }
+
+    .inv-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .inv-totals-wrap {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 40px;
+      background: #f8fafc;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .inv-totals-table {
+      width: 55%;
+    }
+
+    .inv-totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 14px;
+    }
+
+    .inv-total-main {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--primary);
+      border-top: 2px solid #cbd5e1;
+      padding-top: 10px;
+    }
+
+    .inv-qr-block {
+      width: 35%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .inv-upi-tap-btn {
+      display: block;
+      background: #16a34a;
+      color: white;
+      text-decoration: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 13px;
+      margin-top: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .inv-upi-tap-link {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: underline;
+      margin-top: 5px;
+    }
+
+    .inv-company-meta {
+      white-space: pre-line;
+      font-size: 13px;
+      color: #64748b;
+      margin: 6px 0 0 0;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .preview-toolbar {
+      background: var(--primary);
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-toggle-panel {
+      background: transparent;
+      border: 1px solid white;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: none;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #334155;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-weight: bold;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 10000;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.error {
+      background: #ef4444;
+    }
+
+    .toast.success {
+      background: #16a34a;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+
+      .invoice-sheet,
+      .invoice-sheet * {
+        visibility: visible;
+      }
+
+      .invoice-sheet {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        box-shadow: none;
+        padding: 20mm;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+      }
+
+      .editor-panel,
+      .preview-panel {
+        width: 100%;
+        height: auto;
+      }
+
+      .btn-toggle-panel {
+        display: block;
+      }
+
+      .editor-panel.hidden-mobile {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-shell">
+    <!-- ── Left Side Editor Panel ── -->
+    <aside class="editor-panel" id="editorPanel">
+      <div class="editor-header">
+        <div class="brand">
+          <span class="brand-icon">▣</span>
+          <span class="brand-name">InvoiceForge</span>
+        </div>
+        <p class="editor-sub">Fill in the details below. Preview updates live.</p>
+      </div>
+      <!-- autocomplete="off" on the form prevents browser from auto-filling fields -->
+      <form id="invoiceForm" novalidate autocomplete="off">
+        <div class="form-section">
+          <div class="section-badge">01</div>
+          <h3 class="section-title">Your Business</h3>
+          <div class="field-group">
+            <label for="companyName">Company / Name <span class="req">*</span></label>
+            <input type="text" id="companyName" placeholder="e.g. AATHMA" maxlength="80" autocomplete="organization" />
+            <div class="field-error" id="err-companyName"></div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label for="companyPhone">Phone</label>
+              <input type="tel" id="companyPhone" placeholder="e.g. 8078070785" maxlength="20" autocomplete="tel" />
+            </div>
+            <div class="field-group">
+              <label for="companyEmail">Email</label>
+              <input type="email" id="companyEmail" placeholder="hello@company.com" autocomplete="email" />
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="companyAddress">Address</label>
+            <textarea id="companyAddress" rows="2" placeholder="Street, City, State — PIN"
+              autocomplete="street-address"></textarea>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-badge">02</div>
+          <h3 class="section-title">Invoice Details</h3>
+          <div class="field-row">
+            <div class="field-group">
+              <label for="invoiceNumber">Invoice # <span class="req">*</span></label>
+              <input type="text" id="invoiceNumber" placeholder="INV30052026" autocomplete="off" />
+              <div class="field-error" id="err-invoiceNumber"></div>
+            </div>
+            <div class="field-group">
+              <label for="invoiceDate">Date <span class="req">*</span></label>
+              <input type="date" id="invoiceDate" autocomplete="off" />
+              <div class="field-error" id="err-invoiceDate"></div>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label for="dueDate">Due Date</label>
+              <input type="date" id="dueDate" autocomplete="off" />
+            </div>
+            <div class="field-group">
+              <label for="currency">Currency</label>
+              <select id="currency">
+                <option value="₹">₹ INR</option>
+                <option value="$">$ USD</option>
+                <option value="€">€ EUR</option>
+                <option value="£">£ GBP</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLIENT SECTION: all fields use autocomplete="new-password" which is the most
+             reliable cross-browser trick to prevent autofill bleeding from company fields above -->
+        <div class="form-section">
+          <div class="section-badge">03</div>
+          <h3 class="section-title">Bill To</h3>
+          <div class="field-group">
+            <label for="clientName">Client Name <span class="req">*</span></label>
+            <input type="text" id="clientName" placeholder="e.g. Tania Caterer's" autocomplete="new-password" />
+            <div class="field-error" id="err-clientName"></div>
+          </div>
+          <div class="field-group">
+            <label for="clientAddress">Address</label>
+            <textarea id="clientAddress" rows="2" placeholder="Street, City, State — PIN"
+              autocomplete="new-password"></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label for="clientPhone">Phone</label>
+              <input type="tel" id="clientPhone" placeholder="" autocomplete="new-password" />
+            </div>
+            <div class="field-group">
+              <label for="clientEmail">Email</label>
+              <input type="email" id="clientEmail" placeholder="client@email.com" autocomplete="new-password" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-badge">04</div>
+          <h3 class="section-title">Items / Services</h3>
+          <div id="itemsContainer"></div>
+          <button type="button" class="btn-add-item" id="addItemBtn"><span>＋</span> Add Line Item</button>
+        </div>
+
+        <div class="form-section">
+          <div class="section-badge">05</div>
+          <h3 class="section-title">Tax, Discount &amp; Notes</h3>
+          <div class="field-row">
+            <div class="field-group">
+              <label for="taxRate">Tax / GST (%)</label>
+              <input type="number" id="taxRate" placeholder="0" min="0" max="100" step="0.01" value="0"
+                autocomplete="off" />
+            </div>
+            <div class="field-group">
+              <label for="discountRate">Discount (%)</label>
+              <input type="number" id="discountRate" placeholder="0" min="0" max="100" step="0.01" value="0"
+                autocomplete="off" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label for="amountPaid">Amount Paid</label>
+              <input type="number" id="amountPaid" placeholder="0.00" min="0" step="0.01" value="0"
+                autocomplete="off" />
+            </div>
+            <div class="field-group">
+              <label for="upiId">UPI ID <span class="opt">(for QR)</span></label>
+              <input type="text" id="upiId" placeholder="name@upi" autocomplete="off" />
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="notes">Notes / Terms &amp; Conditions</label>
+            <textarea id="notes" rows="3" placeholder="Thanks for your business with us." autocomplete="off"></textarea>
+          </div>
+        </div>
+
+        <div class="action-bar">
+          <button type="button" class="btn-action btn-reset" id="resetBtn">↺ Reset</button>
+          <button type="button" class="btn-action btn-print" id="printBtn">⎙ Print</button>
+          <button type="button" class="btn-action btn-pdf" id="downloadBtn">↓ Download PDF</button>
+        </div>
+      </form>
+    </aside>
+
+    <!-- ── Right Side Live Preview Panel ── -->
+    <main class="preview-panel" id="previewPanel">
+      <div class="preview-toolbar">
+        <span class="preview-label">Live Preview</span>
+        <div class="preview-actions">
+          <button class="btn-toggle-panel" id="toggleEditorBtn">⇆ Toggle Editor</button>
+        </div>
+      </div>
+      <div class="preview-scroll">
+        <div class="invoice-sheet" id="invoiceSheet">
+          <div class="inv-stripe"></div>
+
+          <header class="inv-header">
+            <div class="inv-branding">
+              <img id="inv-logo" src="" alt="" class="inv-logo hidden" />
+              <div class="inv-company-block">
+                <h1 class="inv-company-name" id="inv-companyName">AATHMA</h1>
+                <p class="inv-company-meta" id="inv-companyMeta"></p>
+              </div>
+            </div>
+            <div class="inv-title-block">
+              <h2 class="inv-title-word">INVOICE</h2>
+            </div>
+          </header>
+
+          <div class="inv-divider"></div>
+
+          <div class="inv-meta-row">
+            <div class="inv-bill-to">
+              <p class="inv-meta-label">BILL TO</p>
+              <p class="inv-client-name" id="inv-clientName">Client Name</p>
+              <p class="inv-client-detail" id="inv-clientAddress"></p>
+              <p class="inv-client-detail" id="inv-clientContact"></p>
+            </div>
+            <div class="inv-details-block">
+              <div class="inv-detail-row">
+                <span class="inv-detail-key">INVOICE #</span>
+                <span class="inv-detail-val" id="inv-invoiceNumber">—</span>
+              </div>
+              <div class="inv-detail-row">
+                <span class="inv-detail-key">DATE</span>
+                <span class="inv-detail-val" id="inv-invoiceDate">—</span>
+              </div>
+              <div class="inv-detail-row" id="inv-dueDateRow">
+                <span class="inv-detail-key">DUE DATE</span>
+                <span class="inv-detail-val" id="inv-dueDate"></span>
+              </div>
+            </div>
+          </div>
+
+          <table class="inv-table" id="inv-table">
+            <thead>
+              <tr>
+                <th class="col-desc">Description</th>
+                <th class="col-qty">QTY</th>
+                <th class="col-price">Price</th>
+                <th class="col-amount">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="inv-tbody"></tbody>
+          </table>
+
+          <div class="inv-totals-wrap">
+            <div class="inv-totals-table">
+              <div class="inv-totals-row">
+                <span>Subtotal</span>
+                <span id="inv-subtotal">₹0.00</span>
+              </div>
+              <div class="inv-totals-row discount-row hidden" id="inv-discountRow">
+                <span id="inv-discountLabel">Discount</span>
+                <span id="inv-discountVal">−₹0.00</span>
+              </div>
+              <div class="inv-totals-row tax-row hidden" id="inv-taxRow">
+                <span id="inv-taxLabel">Tax</span>
+                <span id="inv-taxVal">₹0.00</span>
+              </div>
+              <div class="inv-totals-divider"></div>
+              <div class="inv-totals-row inv-total-main">
+                <span>Total</span>
+                <span id="inv-total">₹0.00</span>
+              </div>
+              <div class="inv-totals-row inv-paid-row" id="inv-paidRow">
+                <span>Paid</span>
+                <span id="inv-paid">₹0.00</span>
+              </div>
+              <div class="inv-totals-row inv-balance-row">
+                <span>BALANCE DUE</span>
+                <span id="inv-balance">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="inv-qr-block hidden" id="inv-qrBlock">
+              <div id="inv-qrTarget"></div>
+              <a id="inv-upiTapBtn" href="#" class="inv-upi-tap-btn" target="_blank">
+                <span class="tap-icon">📱</span> Tap to Pay Now
+              </a>
+              <p class="inv-qr-label" style="margin: 5px 0; font-size: 11px; font-weight: bold; color: #64748b;">or Scan
+                QR Code</p>
+              <a id="inv-upiLink" href="#" class="inv-upi-tap-link" target="_blank">Open Payment App</a>
+            </div>
+          </div>
+
+          <div class="inv-notes-block" id="inv-notesBlock">
+            <p class="inv-notes-label">Terms Or Notes</p>
+            <p class="inv-notes-text" id="inv-notes">Thanks for your business with us.</p>
+          </div>
+          <div class="inv-footer-stripe"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let itemCounter = 0;
+    let logoDataUrl = null;
+    let currentUpiUrl = "";
+    let qrCodeInstance = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    let F = {};
+    let P = {};
+
+    function init() {
+      const today = new Date().toISOString().split("T")[0];
+      F.invoiceDate.value = today;
+
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      F.invoiceNumber.value = `INV${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+
+      F.companyName.value = "AATHMA";
+      F.companyPhone.value = "8078070785";
+      F.notes.value = "Thanks for your business with us.";
+      F.upiId.value = "manumaoj7919@okaxis";
+
+      // Explicitly clear all client fields so browser autofill cannot bleed company data into them
+      F.clientName.value = "";
+      F.clientAddress.value = "";
+      F.clientPhone.value = "";
+      F.clientEmail.value = "";
+
+      Object.values(F).forEach((el) => {
+        if (!el) return;
+        el.addEventListener("input", updatePreview);
+        el.addEventListener("change", updatePreview);
+      });
+
+      updatePreview();
+    }
+
+    function addItem(desc = "", qty = 1, price = 0) {
+      const id = ++itemCounter;
+      const container = $("itemsContainer");
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.dataset.id = id;
+
+      row.innerHTML = `
+        <div class="field-group">
+          ${id === 1 ? '<label>Description</label>' : ''}
+          <input type="text" class="item-desc" placeholder="Item description" value="${escHtml(desc)}" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          ${id === 1 ? '<label>Qty</label>' : ''}
+          <input type="number" class="item-qty" placeholder="1" min="0" step="1" value="${qty}" autocomplete="off" />
+        </div>
+        <div class="field-group">
+          ${id === 1 ? '<label>Unit Price</label>' : ''}
+          <input type="number" class="item-price" placeholder="0.00" min="0" step="0.01" value="${price}" autocomplete="off" />
+        </div>
+        <button type="button" class="btn-remove-item" data-id="${id}" title="Remove item">×</button>
+      `;
+
+      container.appendChild(row);
+
+      row.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", updatePreview));
+
+      row.querySelector(".btn-remove-item").addEventListener("click", () => {
+        row.style.opacity = "0";
+        row.style.transform = "translateY(-6px)";
+        row.style.transition = "all 0.18s ease";
+        setTimeout(() => { row.remove(); updatePreview(); }, 180);
+      });
+    }
+
+    function getItems() {
+      return Array.from($("itemsContainer").querySelectorAll(".item-row")).map((row) => {
+        const desc = row.querySelector(".item-desc").value.trim();
+        const qty = parseFloat(row.querySelector(".item-qty").value) || 0;
+        const price = parseFloat(row.querySelector(".item-price").value) || 0;
+        return { desc, qty, price, amount: qty * price };
+      });
+    }
+
+    function updatePreview() {
+      const sym = F.currency.value || "₹";
+
+      P.companyName.textContent = F.companyName.value.trim() || "Your Company";
+
+      const metaLines = [];
+      if (F.companyPhone.value.trim()) metaLines.push(F.companyPhone.value.trim());
+      if (F.companyEmail.value.trim()) metaLines.push(F.companyEmail.value.trim());
+      if (F.companyAddress.value.trim()) metaLines.push(F.companyAddress.value.trim());
+      P.companyMeta.textContent = metaLines.join("\n");
+
+      // Read client fields independently — never copy from company fields
+      P.clientName.textContent = F.clientName.value.trim() || "Client Name";
+      P.clientAddress.textContent = F.clientAddress.value.trim() || "";
+
+      const contactParts = [];
+      if (F.clientPhone.value.trim()) contactParts.push(F.clientPhone.value.trim());
+      if (F.clientEmail.value.trim()) contactParts.push(F.clientEmail.value.trim());
+      P.clientContact.textContent = contactParts.join("  |  ");
+
+      P.invoiceNumber.textContent = F.invoiceNumber.value.trim() || "—";
+      P.invoiceDate.textContent = formatDate(F.invoiceDate.value) || "—";
+
+      if (F.dueDate.value) {
+        P.dueDate.textContent = formatDate(F.dueDate.value);
+        P.dueDateRow.classList.remove("hidden");
+      } else {
+        P.dueDateRow.classList.add("hidden");
+      }
+
+      renderTableRows(sym);
+      renderTotals(sym);
+
+      const notesVal = F.notes.value.trim();
+      P.notes.textContent = notesVal;
+      P.notesBlock.classList.toggle("hidden", !notesVal);
+    }
+
+    function renderTableRows(sym) {
+      const items = getItems();
+      const tbody = P.tbody;
+      tbody.innerHTML = "";
+
+      if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#94a3b8; font-style:italic;">No items added yet. Click 'Add Line Item' to begin.</td></tr>`;
+        return;
+      }
+
+      items.forEach(({ desc, qty, price, amount }) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escHtml(desc) || "<em style='color:#aaa'>—</em>"}</td>
+          <td class="td-qty">${qty}</td>
+          <td class="td-price">${sym}${fmt(price)}</td>
+          <td class="td-amount">${sym}${fmt(amount)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTotals(sym) {
+      const items = getItems();
+      const subtotal = items.reduce((s, i) => s + i.amount, 0);
+      const discountPct = Math.min(Math.max(parseFloat(F.discountRate.value) || 0, 0), 100);
+      const taxPct = Math.min(Math.max(parseFloat(F.taxRate.value) || 0, 0), 100);
+      const paid = Math.max(parseFloat(F.amountPaid.value) || 0, 0);
+
+      const discountAmt = subtotal * (discountPct / 100);
+      const afterDisc = subtotal - discountAmt;
+      const taxAmt = afterDisc * (taxPct / 100);
+      const total = afterDisc + taxAmt;
+      const balance = Math.max(total - paid, 0);
+
+      P.subtotal.textContent = `${sym}${fmt(subtotal)}`;
+
+      if (discountPct > 0) {
+        P.discountRow.classList.remove("hidden");
+        P.discountLabel.textContent = `Discount (${discountPct}%)`;
+        P.discountVal.textContent = `−${sym}${fmt(discountAmt)}`;
+      } else {
+        P.discountRow.classList.add("hidden");
+      }
+
+      if (taxPct > 0) {
+        P.taxRow.classList.remove("hidden");
+        P.taxLabel.textContent = `Tax / GST (${taxPct}%)`;
+        P.taxVal.textContent = `${sym}${fmt(taxAmt)}`;
+      } else {
+        P.taxRow.classList.add("hidden");
+      }
+
+      P.total.textContent = `${sym}${fmt(total)}`;
+      P.paid.textContent = `${sym}${fmt(paid)}`;
+      P.balance.textContent = `${sym}${fmt(balance)}`;
+
+      const upiId = F.upiId.value.trim();
+      if (upiId && balance > 0) {
+        const storeName = encodeURIComponent(F.companyName.value.trim() || "Store");
+        const invNo = encodeURIComponent(F.invoiceNumber.value.trim() || "TXN");
+        currentUpiUrl = `upi://pay?pa=${upiId}&pn=${storeName}&am=${balance.toFixed(2)}&cu=INR&tn=${invNo}`;
+
+        P.qrBlock.classList.remove("hidden");
+        drawQRCode(currentUpiUrl);
+
+        if (P.upiTapBtn) P.upiTapBtn.href = currentUpiUrl;
+        if (P.upiLink) P.upiLink.href = currentUpiUrl;
+      } else {
+        P.qrBlock.classList.add("hidden");
+        currentUpiUrl = "";
+        if (P.upiTapBtn) P.upiTapBtn.removeAttribute("href");
+        if (P.upiLink) P.upiLink.removeAttribute("href");
+      }
+    }
+
+    function validateForm() {
+      let valid = true;
+      REQUIRED_FIELDS.forEach(({ id, label }) => {
+        const el = $(id);
+        const errEl = $(`err-${id}`);
+        if (!el) return;
+        const val = el.value.trim();
+        if (!val) {
+          el.classList.add("error");
+          if (errEl) errEl.textContent = `${label} is required.`;
+          valid = false;
+        } else {
+          el.classList.remove("error");
+          if (errEl) errEl.textContent = "";
+        }
+      });
+      if (!valid) showToast("Please fill in all required fields.", "error");
+      return valid;
+    }
+
+    async function downloadPDF() {
+      const items = getItems();
+      if (items.length === 0) {
+        showToast("Please add at least one line item before exporting.", "error");
+        return;
+      }
+      if (!validateForm()) return;
+
+      showToast("Generating PDF…");
+      const sheet = $("invoiceSheet");
+
+      try {
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = "visible";
+
+        await new Promise((r) => requestAnimationFrame(r));
+        await new Promise((r) => setTimeout(r, 100));
+
+        const canvas = await html2canvas(sheet, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+          width: sheet.scrollWidth,
+          height: sheet.scrollHeight,
+          windowWidth: sheet.scrollWidth,
+          windowHeight: sheet.scrollHeight,
+          x: 0,
+          y: 0,
+        });
+
+        document.body.style.overflow = originalOverflow;
+
+        const imgData = canvas.toDataURL("image/jpeg", 0.97);
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
+
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+
+        const canvasAspect = canvas.height / canvas.width;
+        const imgHeight = pageW * canvasAspect;
+
+        pdf.addImage(imgData, "JPEG", 0, 0, pageW, imgHeight, undefined, "FAST");
+
+        if (currentUpiUrl) {
+          const tapBtn = $("inv-upiTapBtn");
+          const sheetEl = $("invoiceSheet");
+          if (tapBtn && sheetEl) {
+            const sheetRect = sheetEl.getBoundingClientRect();
+            const btnRect = tapBtn.getBoundingClientRect();
+            const relX = btnRect.left - sheetRect.left;
+            const relY = btnRect.top - sheetRect.top;
+            const btnW = btnRect.width;
+            const btnH = btnRect.height;
+            const scaleX = pageW / sheetEl.scrollWidth;
+            const scaleY = imgHeight / sheetEl.scrollHeight;
+            const pdfX = relX * scaleX;
+            const pdfY = relY * scaleY;
+            const pdfW = btnW * scaleX;
+            const pdfH = btnH * scaleY;
+            pdf.link(pdfX, pdfY, pdfW, pdfH, { url: currentUpiUrl });
+          }
+        }
+
+        const filename = `Invoice_${(F.companyName.value || "").replace(/\s+/g, "_")}_${(F.invoiceNumber.value || "").replace(/\s+/g, "")}.pdf`;
+        pdf.save(filename);
+        showToast(`Saved as ${filename}`, "success");
+
+      } catch (err) {
+        console.error("PDF generation failed:", err);
+        showToast("PDF generation failed. Try printing instead.", "error");
+      }
+    }
+
+    function printInvoice() {
+      if (getItems().length === 0) {
+        showToast("Please add at least one line item before printing.", "error");
+        return;
+      }
+      if (!validateForm()) return;
+      window.print();
+    }
+
+    function resetForm() {
+      if (!confirm("Clear all fields and start a new invoice?")) return;
+
+      Object.values(F).forEach((el) => {
+        if (!el) return;
+        if (el.tagName === "SELECT") el.selectedIndex = 0;
+        else el.value = "";
+      });
+
+      logoDataUrl = null;
+      $("itemsContainer").innerHTML = "";
+      itemCounter = 0;
+
+      init();
+      showToast("Form cleared.", "success");
+    }
+
+    let toastTimer;
+    function showToast(msg, type = "") {
+      const el = $("toast");
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 3000);
+    }
+
+    function drawQRCode(data) {
+      const target = P.qrTarget;
+      if (!target) return;
+
+      target.innerHTML = "";
+      qrCodeInstance = null;
+
+      try {
+        qrCodeInstance = new QRCode(target, {
+          text: data,
+          width: 100,
+          height: 100,
+          colorDark: "#1a1a2e",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch (e) {
+        console.warn("QR generation error:", e);
+      }
+    }
+
+    const REQUIRED_FIELDS = [
+      { id: "companyName", label: "Company name" },
+      { id: "invoiceNumber", label: "Invoice number" },
+      { id: "invoiceDate", label: "Invoice date" },
+      { id: "clientName", label: "Client name" },
+    ];
+
+    function fmt(n) {
+      return Number(n).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "";
+      const [y, m, d] = iso.split("-");
+      return `${d}/${m}/${y}`;
+    }
+
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      F.companyName = $("companyName");
+      F.companyPhone = $("companyPhone");
+      F.companyEmail = $("companyEmail");
+      F.companyAddress = $("companyAddress");
+      F.invoiceNumber = $("invoiceNumber");
+      F.invoiceDate = $("invoiceDate");
+      F.dueDate = $("dueDate");
+      F.currency = $("currency");
+      F.clientName = $("clientName");
+      F.clientAddress = $("clientAddress");
+      F.clientPhone = $("clientPhone");
+      F.clientEmail = $("clientEmail");
+      F.taxRate = $("taxRate");
+      F.discountRate = $("discountRate");
+      F.amountPaid = $("amountPaid");
+      F.upiId = $("upiId");
+      F.notes = $("notes");
+
+      P.companyName = $("inv-companyName");
+      P.companyMeta = $("inv-companyMeta");
+      P.logo = $("inv-logo");
+      P.clientName = $("inv-clientName");
+      P.clientAddress = $("inv-clientAddress");
+      P.clientContact = $("inv-clientContact");
+      P.invoiceNumber = $("inv-invoiceNumber");
+      P.invoiceDate = $("inv-invoiceDate");
+      P.dueDate = $("inv-dueDate");
+      P.dueDateRow = $("inv-dueDateRow");
+      P.tbody = $("inv-tbody");
+      P.subtotal = $("inv-subtotal");
+      P.discountRow = $("inv-discountRow");
+      P.discountLabel = $("inv-discountLabel");
+      P.discountVal = $("inv-discountVal");
+      P.taxRow = $("inv-taxRow");
+      P.taxLabel = $("inv-taxLabel");
+      P.taxVal = $("inv-taxVal");
+      P.total = $("inv-total");
+      P.paid = $("inv-paid");
+      P.paidRow = $("inv-paidRow");
+      P.balance = $("inv-balance");
+      P.notes = $("inv-notes");
+      P.notesBlock = $("inv-notesBlock");
+      P.qrBlock = $("inv-qrBlock");
+      P.qrTarget = $("inv-qrTarget");
+      P.upiTapBtn = $("inv-upiTapBtn");
+      P.upiLink = $("inv-upiLink");
+
+      // Forcefully blank all client fields BEFORE init() runs,
+      // so any browser autofill that fires synchronously is immediately overridden
+      ["clientName", "clientAddress", "clientPhone", "clientEmail"].forEach(id => {
+        const el = $(id);
+        if (el) el.value = "";
+      });
+
+      init();
+
+      // Belt-and-suspenders: clear client fields again after a short delay
+      // to catch any async browser autofill that fires after DOMContentLoaded
+      setTimeout(() => {
+        ["clientName", "clientAddress", "clientPhone", "clientEmail"].forEach(id => {
+          const el = $(id);
+          if (el && el.value === F.companyName.value) el.value = "";
+          if (el && el.value === F.companyPhone.value) el.value = "";
+          if (el && el.value === F.companyEmail.value) el.value = "";
+          if (el && el.value === F.companyAddress.value) el.value = "";
+        });
+        updatePreview();
+      }, 300);
+
+      $("addItemBtn").addEventListener("click", () => addItem());
+      $("downloadBtn").addEventListener("click", downloadPDF);
+      $("printBtn").addEventListener("click", printInvoice);
+      $("resetBtn").addEventListener("click", resetForm);
+
+      $("toggleEditorBtn").addEventListener("click", () => {
+        const panel = document.querySelector(".editor-panel");
+        panel.classList.toggle("hidden-mobile");
+      });
+
+      REQUIRED_FIELDS.forEach(({ id }) => {
+        const el = $(id);
+        if (el) {
+          el.addEventListener("input", () => {
+            el.classList.remove("error");
+            const err = $(`err-${id}`);
+            if (err) err.textContent = "";
+          });
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
