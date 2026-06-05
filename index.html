@@ -654,7 +654,6 @@
       F.notes.value = "Thanks for your business.";
       F.upiId.value = "manumaoj7919@okaxis";
 
-      // force clear client fields
       ['clientName','clientAddress','clientPhone','clientEmail'].forEach(id => { if(F[id]) F[id].value = ""; });
 
       Object.values(F).forEach(el => {
@@ -795,7 +794,6 @@
       if (!validateForm()) return;
       
       const sheet = $("invoiceSheet");
-      // Ensure QR block is visible for capture if it exists
       const qrBlock = $("inv-qrBlock");
       const wasHidden = qrBlock.classList.contains('hidden');
       if (wasHidden) {
@@ -803,16 +801,26 @@
       }
       
       try {
-        // Use higher scale and specific options to avoid blank pages
+        // Capture the invoice sheet at a fixed desktop-like width (800px)
+        // This ensures the PDF looks identical regardless of device viewport
+        const originalWidth = sheet.style.width;
+        const originalMaxWidth = sheet.style.maxWidth;
+        sheet.style.width = '800px';
+        sheet.style.maxWidth = '800px';
+        
         const canvas = await html2canvas(sheet, { 
           scale: 2, 
           backgroundColor: '#ffffff', 
           logging: false,
           allowTaint: false,
           useCORS: true,
-          windowWidth: sheet.scrollWidth,
+          windowWidth: 800,
           windowHeight: sheet.scrollHeight
         });
+        
+        // Restore original styles
+        sheet.style.width = originalWidth;
+        sheet.style.maxWidth = originalMaxWidth;
         
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -822,28 +830,30 @@
         const imgWidth = pageWidth;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         
-        let heightLeft = imgHeight;
-        let position = 0;
-        
-        // Add first page
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-        
-        // Add extra pages if content overflows
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
+        // If content fits on one page, add it without splitting
+        if (imgHeight <= pageHeight) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+        } else {
+          // Content overflows: split across pages cleanly
+          let heightLeft = imgHeight;
+          let position = 0;
           pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
           heightLeft -= pageHeight;
+          
+          while (heightLeft > 0) {
+            position = heightLeft - imgHeight;
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+          }
         }
         
         pdf.save(`Invoice_${F.companyName.value.trim() || 'company'}_${F.invoiceNumber.value.trim() || 'inv'}.pdf`);
-        showToast('PDF downloaded','success');
+        showToast('PDF downloaded (desktop layout)','success');
       } catch (e) {
         console.error(e);
         showToast('PDF generation failed','error');
       } finally {
-        // Restore hidden state if it was hidden before
         if (wasHidden) {
           qrBlock.classList.add('hidden');
         }
